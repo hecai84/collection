@@ -1,16 +1,27 @@
 #include "uart.h"
+#include <stdio.h>
 //------------宏定义-------------------
-#define DATA_LENGTH 20
-#define DATA_HEAD 0xff
-#define SendUart(dat) HAL_UART_Transmit(&huart1,&dat,1,0xffff)
+#define SendUart(dat) HAL_UART_Transmit(&huart1,(BYTE *)&dat,1,0xffff)
+#define SendUartArr(dat,len) HAL_UART_Transmit(&huart1,dat,len,0xffff)
+
+
+/**
+  * @brief  Uart status enumeration
+  */
+typedef enum
+{
+  UART_IDLE = 0U,
+  UART_SUCCESS
+} UART_STATUS;
 //-------------------------------------
 //------------变量定义-----------------
-uint8_t sendbuffer[DATA_LENGTH];
-uint8_t revbuffer[DATA_LENGTH];
+BYTE sendbuffer[DATA_LENGTH];
+BYTE revbuffer[DATA_LENGTH];
 TIM_HandleTypeDef htim3;
 static int count=0;
 static int recpos=0;
-static uint8_t rebyte;
+static BYTE rebyte;
+static UART_STATUS status;
 //-------------------------------------
 //------------函数定义-----------------
 void rec_succeed(int len);
@@ -55,8 +66,19 @@ uint16_t ptable[256] =
 0x6E17, 0x7E36, 0x4E55, 0x5E74, 0x2E93, 0x3EB2, 0x0ED1, 0x1EF0
 };
 
+
+
 static void Error_Handler(void)
 {
+}
+
+BYTE GetUartCmd(void)
+{
+	if(status==UART_SUCCESS)
+	{
+		return revbuffer[2];
+	}else
+		return 0;
 }
 
 UART_HandleTypeDef huart1;
@@ -92,12 +114,10 @@ static void MX_USART1_UART_Init(void)
   /* USER CODE END USART1_Init 2 */
 
 }
-uint16_t getCRC(uint8_t *dat,int len)
+uint16_t getCRC(BYTE *dat,int len)
 {
-
-
   uint16_t cRc_16 = 0;
-  uint8_t temp;
+  BYTE temp;
 
   while(len-- > 0)
   {
@@ -108,16 +128,24 @@ uint16_t getCRC(uint8_t *dat,int len)
   return cRc_16; 
 }
 
-
+/**
+  * @brief 初始化uart接收
+  * @param None
+  * @retval None
+  */
 void initUartRecive(void)
 {
-	if(HAL_UART_Receive_IT(&huart1,(uint8_t *)&rebyte,1) != HAL_OK){    //这一句写在main函数的while(1)上面。用于启动程序启动一次中断接收
-		//HAL_UART_Transmit(&huart1, (uint8_t *)&"ERROR\r\n",7,10);    
+	if(HAL_UART_Receive_IT(&huart1,(BYTE *)&rebyte,1) != HAL_OK){    //这一句写在main函数的while(1)上面。用于启动程序启动一次中断接收
+		SendUartArr((BYTE *)&"ERROR\r\n",7);    
 		while(1);
 	} 
 }
-
-void process_rec(uint8_t byte)
+/**
+  * @brief 处理接收到的字节
+  * @param byte
+  * @retval None
+  */
+void process_rec(BYTE byte)
 {
 	if(recpos==0)
 	{
@@ -139,10 +167,8 @@ void process_rec(uint8_t byte)
 	{
 		revbuffer[recpos++]=byte;
 		if(recpos>=revbuffer[1]+2)
-		{
-			recpos=0;
-			rec_succeed(revbuffer[1]+2);
-			
+		{						
+			rec_succeed(revbuffer[1]+2);			
 		}
 	}else
 	{
@@ -196,39 +222,49 @@ static void MX_TIM3_Init(void)
   /* USER CODE END TIM3_Init 2 */
 
 }
-
+/**
+  * @brief 处理接收成功的数据
+  * @param len 接收到的数据长度
+  * @retval None
+  */
 void rec_succeed(int len)
 {
 	if(checkDataCRC())
 	{
-		uint8_t temp[]={1,2,3,4,4};
-		SendCmd(temp,5);
+		status=UART_SUCCESS;
+		//todo
 	}else
 	{
-		uint8_t temp[]={1,2,3,3,4};
-		SendCmd(temp,5);
+		//todo
 	}
+	recpos=0;
 }
-
+/**
+  * @brief 串口中断接收
+  * @param None
+  * @retval None
+  */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
-{
-	//HAL_UART_Transmit(&huart1, (uint8_t *)&"\r\ninto HAL_UART_RxCpltCallback\r\n",32,0xffff);    //验证进入这个函数了
-	//HAL_UART_Transmit(&huart1,(uint8_t *)&value,1,0xffff);//把接收到的数据通过串口发送出去       
-	process_rec(rebyte);
-	HAL_UART_Receive_IT(&huart1,(uint8_t *)&rebyte,1);//重新打开串口中断
+{   
+	//空闲时才处理接收到的内容
+	if(status == UART_IDLE)
+		process_rec(rebyte);
+	HAL_UART_Receive_IT(&huart1,(BYTE *)&rebyte,1);//重新打开串口中断
 }	
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     if (htim->Instance == htim3.Instance)
     {
-        /* Toggle LED */
+        /* 处理串口超时*/
 		if(count++>10)
-			recpos=0;
-		
+			recpos=0;	
     }
 }
-
+void ClearStatus(void)
+{
+	status=UART_IDLE;
+}
 
 void InitUart(void)
 {
@@ -237,23 +273,16 @@ void InitUart(void)
 	MX_USART1_UART_Init();
 	initUartRecive();
 }
-void sendarr(int len)
+
+/**
+  * @brief 发送指令
+  * @param data 数据地址，len 数据长度
+  * @retval None
+  */
+void SendCmd(BYTE * data,int len)
 {
 	int i;
-	uint16_t key=getCRC(sendbuffer,len);
-	uint8_t hi=(key>>8) & 0xff;	
-	uint8_t lo=key & 0xff;
-	for(i=0;i<len;i++)
-	{
-		HAL_UART_Transmit(&huart1,&sendbuffer[i],1,0xffff);//发送数据   
-	}
-	HAL_UART_Transmit(&huart1,&lo,1,0xffff);//发送数据  
-	HAL_UART_Transmit(&huart1,&hi,1,0xffff);//发送数据    
-}
-void SendCmd(uint8_t * data,int len)
-{
-	int i;
-	if(len <= DATA_LENGTH -2)
+	if(len <= DATA_LENGTH -4)
 	{
 		sendbuffer[0]=DATA_HEAD;
 		sendbuffer[1]=len+2;
@@ -261,8 +290,21 @@ void SendCmd(uint8_t * data,int len)
 		{
 			sendbuffer[i+2]=data[i];
 		}
-		sendarr(len+2);
-	}
+	}else
+		return;
+	
+	//计算crc
+	len+=2;
+	uint16_t key=getCRC(sendbuffer,len);
+	BYTE hi=(key>>8) & 0xff;	
+	BYTE lo=key & 0xff;
+	sendbuffer[len++]=lo;
+	sendbuffer[len++]=hi;
+	
+	
+	//发送
+	SendUartArr(sendbuffer,len);
+	
 }
 
 //校验485数据 CRC校验
@@ -272,11 +314,13 @@ BOOL checkDataCRC(void)
 {
 	uint16_t tmp;
 	if(revbuffer[0]!=DATA_HEAD)	//检查数据头
+	{
 		return FALSE;
+	}
 	else
 	{
 		int len= (int)(revbuffer[1]);	//获取数据长度
-		if(len>4 && len<DATA_LENGTH-2)
+		if(len>2 && len<DATA_LENGTH-2)
 		{
 			tmp=getCRC(revbuffer,len);
 			if(revbuffer[len]==(tmp&0xff) && revbuffer[len+1]==((tmp&0xff00) >> 8))
@@ -291,7 +335,7 @@ BOOL checkDataCRC(void)
 
 void SendDebug(ULONG dat)
 {
-	uint8_t value;
+	BYTE value;
 	BYTE i=4;
 	for(i=i;i>0;i--)
 	{
@@ -299,6 +343,8 @@ void SendDebug(ULONG dat)
 		SendUart(value);
 	}
 }
+
+
 
 
 

@@ -43,8 +43,10 @@ BOOL Read_DHT11()
 {				  
 	BYTE temp,check,flag;
 	DHT_IO_OUT();
+	DHT_H;
+	HAL_Delay(15);
 	DHT_L;
-	HAL_Delay(18);
+	HAL_Delay(15);
 	//主机拉低18ms 
 	DHT_H;
 	//总线由上拉电阻拉高 主机延时20us

@@ -20,12 +20,13 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
 #include "hx711.h"
 #include "uart.h"
 #include "dht.h"
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
-
+#include "door.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -35,7 +36,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -45,22 +45,146 @@
 
 /* Private variables ---------------------------------------------------------*/
 
-
 /* USER CODE BEGIN PV */
-
+extern BYTE revbuffer[];
+BYTE sendData[DATA_LENGTH];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void Error_Handler(void);
 /* USER CODE BEGIN PFP */
-
+static void processUart(void);
+static void cmd2(BYTE arg1);
+static void cmd4(BYTE arg1);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+/**
+  * @brief 处理串口接收到的数据
+  * @retval None
+  */
+static void processUart(void)
+{
+	BYTE cmd=GetUartCmd();
+	BYTE arg1=revbuffer[3];
+	if(cmd)
+	{
+		switch(cmd)
+		{
+			case 1:
+				
+				break;
+			case 2:
+				cmd2(arg1);
+				break;
+			case 3:
+				break;
+			case 4:
+				cmd4(arg1);
+				break;
+		
+		
+		
+		}
+		//清除状态
+		ClearStatus();
+	}
+}
 
+static void cmd2(BYTE arg1)
+{
+	if(arg1==2)
+	{
+		if(OpenDoor())
+		{
+			sendData[0]=0x12;
+			sendData[1]=0x02;
+		}else
+		{
+			sendData[0]=0x12;
+			sendData[1]=0x03;
+		}
+		SendCmd(sendData,2);
+	}
+}
+static void cmd2re(DOOR_State state)
+{
+	if(state==DOORSTATE_DOOROPENED)
+	{
+		sendData[0]=0x12;
+		sendData[1]=0x04;
+	}else if(state==DOORSTATE_DOORCLOSED)
+	{
+		sendData[0]=0x12;
+		sendData[1]=0x05;
+	}else if(state==DOORSTATE_CLOSED)
+	{
+		sendData[0]=0x12;
+		sendData[1]=0x06;
+	}
+	SendCmd(sendData,2);
+}
+
+static void cmd4(BYTE arg1)
+{	
+	if(arg1==3)
+	{
+		sendData[0]=4;
+		sendData[1]=3;
+		if(Read_DHT11())
+		{
+			sendData[2]=ReadHumidity();
+			sendData[3]=ReadTemperature();
+		}else
+		{
+			sendData[2]=0xee;
+			sendData[3]=0xee;
+		}
+		SendCmd(sendData,4);					
+			
+	}
+}
+
+static void checkDoor()
+{
+	int count=30;
+	DOOR_State state=GetCurState();
+	if(state==DOORSTATE_LOCKOPENED)
+	{
+		//锁已经打开，判断门状态
+		if(CheckDoorOpened())
+		{
+			//门已经打开
+			cmd2re(DOORSTATE_DOOROPENED);
+		}
+	}else if(state==DOORSTATE_DOOROPENED)
+	{
+		//门已经打开，判断关门状态
+		if(CheckDoorClosed())
+		{
+			//门已经关闭
+			cmd2re(DOORSTATE_DOORCLOSED);
+		}		
+	}else if(state==DOORSTATE_DOORCLOSED)
+	{
+		//门已经关闭，判断是否重新打开
+		while(count--)
+		{
+			HAL_Delay(100);
+			//锁已经打开，判断门状态
+			if(CheckDoorOpened())
+			{
+				//门已经打开
+				cmd2re(DOORSTATE_DOOROPENED);
+				return;
+			}
+		}
+		CloseDoor();
+		cmd2re(DOORSTATE_CLOSED);
+	}
+}
 
 /* USER CODE END 0 */
 
@@ -99,21 +223,11 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-
-
   while (1)
   {
     /* USER CODE END WHILE */
-	if(Read_DHT11())
-	{
-		SendDebug(ReadHumidity());
-		SendDebug(ReadTemperature());
-		
-	}else
-	{
-		SendDebug(0xEE);
-	}
-	  HAL_Delay(2000);
+		processUart();
+		checkDoor();
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -155,6 +269,7 @@ void SystemClock_Config(void)
     Error_Handler();
   }
 }
+
 
 
 /**

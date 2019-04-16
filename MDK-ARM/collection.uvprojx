@@ -337,7 +337,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32F103xE</Define>
               <Undefine></Undefine>
-              <IncludePath>../Inc;            ../Drivers/STM32F1xx_HAL_Driver/Inc;            ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;            ../Drivers/CMSIS/Device/ST/STM32F1xx/Include;            ../Drivers/CMSIS/Include</IncludePath>
+              <IncludePath>../Inc;               ../Drivers/STM32F1xx_HAL_Driver/Inc;               ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;               ../Drivers/CMSIS/Device/ST/STM32F1xx/Include;               ../Drivers/CMSIS/Include</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -407,6 +407,16 @@
               <FilePath>..\Src\global.c</FilePath>
             </File>
             <File>
+              <FileName>dht.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\dht.c</FilePath>
+            </File>
+            <File>
+              <FileName>door.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\door.c</FilePath>
+            </File>
+            <File>
               <FileName>main.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Src/main.c</FilePath>
@@ -422,9 +432,14 @@
               <FilePath>../Src/stm32f1xx_hal_msp.c</FilePath>
             </File>
             <File>
-              <FileName>dht.c</FileName>
+              <FileName>SEGGER_RTT.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Src\dht.c</FilePath>
+              <FilePath>..\Src\SEGGER_RTT.c</FilePath>
+            </File>
+            <File>
+              <FileName>SEGGER_RTT_printf.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\SEGGER_RTT_printf.c</FilePath>
             </File>
           </Files>
         </Group>
