@@ -71,6 +71,7 @@ static void processUart(void)
 	BYTE arg1=revbuffer[3];
 	if(cmd)
 	{
+		LOG("%02X%02X%02X%02X%02X%02X%02X\n",revbuffer[0],revbuffer[1],revbuffer[2],revbuffer[3],revbuffer[4],revbuffer[5],revbuffer[6]);
 		switch(cmd)
 		{
 			case 1:
@@ -105,6 +106,18 @@ static void cmd2(BYTE arg1)
 		{
 			sendData[0]=0x12;
 			sendData[1]=0x03;
+		}
+		SendCmd(sendData,2);
+	}else if(arg1==3)
+	{
+		if(CloseDoor())
+		{
+			sendData[0]=0x12;
+			sendData[1]=0x06;
+		}else
+		{
+			sendData[0]=0x12;
+			sendData[1]=0x07;
 		}
 		SendCmd(sendData,2);
 	}
@@ -226,6 +239,8 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+	  //cmd4(3);
+	  //HAL_Delay(2000);
 		processUart();
 		checkDoor();
     /* USER CODE BEGIN 3 */

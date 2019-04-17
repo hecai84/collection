@@ -3,10 +3,15 @@
 #include "stm32f1xx_hal.h"
 #include "SEGGER_RTT.h"
 
+
 //-------宏定义--------//
 #define TRUE 			1
 #define FALSE			0
-#define LOG(format, ...) SEGGER_RTT_printf(0, format, __VA_ARGS__)
+#ifdef DEBUG
+#define LOG(n, ...) SEGGER_RTT_printf(0,  #n "\n", ##__VA_ARGS__)
+#else
+#define LOG(n, ...)
+#endif
 
 //--声明类型--//
 typedef unsigned char BYTE;

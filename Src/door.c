@@ -4,8 +4,8 @@
 
 
 
-#define DO_CLOSE GPIO_PIN_RESET
-#define DO_OPEN GPIO_PIN_SET
+#define DO_CLOSE GPIO_PIN_SET
+#define DO_OPEN GPIO_PIN_RESET
 #define LOCK_CLOSE GPIO_PIN_RESET
 #define LOCK_OPEN GPIO_PIN_SET
 #define DOOR_CLOSE GPIO_PIN_RESET
@@ -31,6 +31,7 @@ DOOR_State GetCurState()
 //开门，打开继电器，并检测锁的状态是否已经打开
 BOOL OpenDoor()
 {	
+	LOG("Open Door");
 	int count=0;
 	OpenRelay(DO_OPEN);
 	HAL_Delay(300);
@@ -52,6 +53,7 @@ BOOL OpenDoor()
 //关门，关闭继电器
 BOOL CloseDoor()
 {
+	LOG("Close Door");
 	int count=0;
 	curState=DOORSTATE_CLOSED;
 	OpenRelay(DO_CLOSE);
@@ -77,6 +79,7 @@ BOOL CheckDoorOpened()
 		HAL_Delay(10);
 		if(Door1==DOOR_OPEN)
 		{
+			LOG("Door opened");
 			curState=DOORSTATE_DOOROPENED;
 			return TRUE;
 		}
@@ -90,6 +93,7 @@ BOOL CheckDoorClosed()
 		HAL_Delay(10);
 		if(Door1==DOOR_CLOSE)
 		{
+			LOG("Door Closed");
 			curState=DOORSTATE_DOORCLOSED;
 			return TRUE;
 		}

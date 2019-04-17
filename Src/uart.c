@@ -312,7 +312,10 @@ void SendCmd(BYTE * data,int len)
 //返回值1为成功
 BOOL checkDataCRC(void)
 {
-	uint16_t tmp;
+#ifdef DEBUG
+		return TRUE;
+#else
+	uint16_t tmp;	
 	if(revbuffer[0]!=DATA_HEAD)	//检查数据头
 	{
 		return FALSE;
@@ -331,6 +334,7 @@ BOOL checkDataCRC(void)
 		return FALSE;
 		
 	}
+#endif
 }
 
 void SendDebug(ULONG dat)
